@@ -20,6 +20,29 @@ namespace Syllabicator.Controllers
         /// <param name="word">The word for which to get syllables</param>
         /// <returns></returns>
 
+        [HttpPost]
+        public IActionResult SyllabicateUltraStarFile([FromBody] string UltraStarFile, [FromQuery] string lang)
+        {
+            List<string> Output = new List<string>();
+            var lines = UltraStarFile.Split('\n');
+
+            foreach (var line in lines)
+            {
+                string tline = line.Trim();
+                Output.AddRange(SplitLine(tline, lang));
+            }
+
+            CleanGlossary(lang);
+
+            return Ok(Output);
+        }
+
+        [HttpPost]
+        public IActionResult SyllabicateUltraStarLine([FromBody] string UltraStarLine, [FromQuery] string lang)
+        {
+            return Ok(SplitLine(UltraStarLine, lang));
+        }
+
         public IActionResult Syllables([FromQuery] string word)
         {
             word = word.ToLower().Trim();
@@ -46,10 +69,7 @@ namespace Syllabicator.Controllers
         /// <returns></returns>
         public IActionResult SyllablesWithLanguage([FromQuery] string word, [FromQuery] string lang)
         {
-            string jsonPath = Path.Combine(_hostingEnvironment.WebRootPath, "json", lang + ".json");
-            string json = System.IO.File.ReadAllText(jsonPath);
-            var Glossary = JsonConvert.DeserializeObject<List<GlossaryItem>>(json);
-
+            var Glossary = LoadGlossary(lang);
             var Item = Glossary.SingleOrDefault(x => x.Word == word);
             if (Item != null)
             {
@@ -59,6 +79,38 @@ namespace Syllabicator.Controllers
             return Ok(new GlossaryItem() { Word = word, Syllables = new string[] { word } });
         }
 
+        private void CleanGlossary(string lang)
+        {
+            var Glossary = LoadGlossary(lang);
+
+            // Only save words to the glossary if they are devoid of punctuation
+            Glossary.RemoveAll(x => x.Word.Contains("?") || x.Word.Contains("\"") || x.Word.Contains(",") || x.Word.Contains("!") || x.Word.Contains(".") || x.Word.Contains(";") || x.Word.Contains("(") || x.Word.Contains(")") || x.Word.EndsWith("-"));
+            string jsonPath = Path.Combine(_hostingEnvironment.WebRootPath, "json", lang + ".json");
+            System.IO.File.WriteAllText(jsonPath, JsonConvert.SerializeObject(Glossary), System.Text.Encoding.UTF8);
+        }
+
+        private List<GlossaryItem> LoadGlossary(string lang)
+        {
+            string jsonPath = Path.Combine(_hostingEnvironment.WebRootPath, "json", lang + ".json");
+            string json = System.IO.File.ReadAllText(jsonPath);
+            var Glossary = JsonConvert.DeserializeObject<List<GlossaryItem>>(json);
+            return Glossary;
+        }
+
+        private void SaveGlossary(List<GlossaryItem> Glossary, string lang)
+        {
+            //File.WriteAllText("C:\\Users\\graph\\source\\repos\\SongSyllabicator\\SongSyllabicator\\glossary-en.json", JsonConvert.SerializeObject(Glossary, Formatting.Indented), System.Text.Encoding.UTF8);
+
+            string jsonPath = Path.Combine(_hostingEnvironment.WebRootPath, "json", lang + ".json");
+            System.IO.File.WriteAllText(jsonPath, JsonConvert.SerializeObject(Glossary), System.Text.Encoding.UTF8);
+        }
+
+        /// <summary>
+        /// Splits a word line from UltraStar into multiple lines across its syllables
+        /// </summary>
+        /// <param name="UltraStarLine">A line from UltraStar that includes the word and its place in the file (i.e. : 338 40 11 Hello) </param>
+        /// <param name="lang">The language of the dictionary to check</param>
+        /// <returns></returns>
         private List<string> SplitLine(string UltraStarLine, string lang)
         {
             string jsonPath = Path.Combine(_hostingEnvironment.WebRootPath, "json", lang + ".json");
@@ -81,7 +133,7 @@ namespace Syllabicator.Controllers
                         string url = "https://www.howmanysyllables.com/syllables/" + songLine.SyllableWord;
                         string html = new WebClient().DownloadString(url);
                         string SyllableInfoCheckString = "into syllables: &nbsp; <span class=\"Answer_Red\" data-nosnippet>";
-                        Thread.Sleep(502); // Sleep so that we don't slam the how many syllables website
+                        Thread.Sleep(102); // Sleep so that we don't slam the how many syllables website
 
                         if (html.Contains(SyllableInfoCheckString))
                         {
@@ -94,12 +146,18 @@ namespace Syllabicator.Controllers
                             };
 
                             // Can we add this to our glossary?
+                            //string p = jsonPath.Replace(".json", ".json.flat");
+                            //System.IO.File.WriteAllText(p, "Hello");
+                            Glossary.Add(GItem);
+                            SaveGlossary(Glossary, lang);
                         }
                     }
-                    else
-                    {
-                        GItem = new GlossaryItem() { Word = songLine.SyllableWord, Syllables = new string[] { songLine.SyllableWord } };
-                    }
+                }
+
+                // If, after all this, GItem is still null... just make it a one-syllable word
+                if (GItem == null)
+                {
+                    GItem = new GlossaryItem() { Word = songLine.SyllableWord, Syllables = new string[] { songLine.SyllableWord } };
                 }
 
                 if (GItem.Syllables.Length == 1)
@@ -151,12 +209,6 @@ namespace Syllabicator.Controllers
                 // Just return as is
                 return new List<string>() { UltraStarLine };
             }
-        }
-
-        [HttpPost]
-        public IActionResult SyllabicateUltraStarLine([FromBody] string UltraStarLine, [FromQuery] string lang)
-        {
-            return Ok(SplitLine(UltraStarLine, lang));
         }
     }
 }
