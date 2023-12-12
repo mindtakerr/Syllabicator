@@ -85,6 +85,10 @@ namespace Syllabicator.Controllers
 
             // Only save words to the glossary if they are devoid of punctuation
             Glossary.RemoveAll(x => x.Word.Contains("?") || x.Word.Contains("\"") || x.Word.Contains(",") || x.Word.Contains("!") || x.Word.Contains(".") || x.Word.Contains(";") || x.Word.Contains("(") || x.Word.Contains(")") || x.Word.EndsWith("-"));
+
+            // Sort the glossary
+            Glossary = Glossary.OrderBy(x => x.Word).ToList();
+
             string jsonPath = Path.Combine(_hostingEnvironment.WebRootPath, "json", lang + ".json");
             System.IO.File.WriteAllText(jsonPath, JsonConvert.SerializeObject(Glossary), System.Text.Encoding.UTF8);
         }
