@@ -131,8 +131,6 @@ namespace Syllabicator.Controllers
                                 };
 
                                 // Can we add this to our glossary?
-                                //string p = jsonPath.Replace(".json", ".json.flat");
-                                //System.IO.File.WriteAllText(p, "Hello");
                                 Glossary.Add(Syllabicated);
                                 SaveGlossary(Glossary, lang);
                             }
@@ -199,8 +197,6 @@ namespace Syllabicator.Controllers
 
         private void SaveGlossary(List<GlossaryItem> Glossary, string lang)
         {
-            //File.WriteAllText("C:\\Users\\graph\\source\\repos\\SongSyllabicator\\SongSyllabicator\\glossary-en.json", JsonConvert.SerializeObject(Glossary, Formatting.Indented), System.Text.Encoding.UTF8);
-
             string jsonPath = Path.Combine(_hostingEnvironment.WebRootPath, "json", lang + ".json");
             System.IO.File.WriteAllText(jsonPath, JsonConvert.SerializeObject(Glossary), System.Text.Encoding.UTF8);
         }
@@ -246,8 +242,6 @@ namespace Syllabicator.Controllers
                             };
 
                             // Can we add this to our glossary?
-                            //string p = jsonPath.Replace(".json", ".json.flat");
-                            //System.IO.File.WriteAllText(p, "Hello");
                             Glossary.Add(GItem);
                             SaveGlossary(Glossary, lang);
                         }
